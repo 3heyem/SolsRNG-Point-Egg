@@ -1,1 +1,0 @@
-# SolsRNG-Point-Egg

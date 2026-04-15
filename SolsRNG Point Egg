@@ -1,0 +1,83 @@
+local Workspace = game:GetService("Workspace")
+local lp = game:GetService("Players").LocalPlayer
+
+local POINT_COLORS = {
+    ["point_egg_1"] = Color3.fromRGB(255, 255, 255),
+    ["point_egg_2"] = Color3.fromRGB(0, 255, 0),
+    ["point_egg_3"] = Color3.fromRGB(0, 150, 255),
+    ["point_egg_4"] = Color3.fromRGB(255, 105, 180),
+    ["point_egg_5"] = Color3.fromRGB(255, 165, 0),
+    ["point_egg_6"] = Color3.fromRGB(255, 0, 0)
+}
+local POTION_COLOR = Color3.fromRGB(150, 150, 150)
+local ROMAN = {"I", "II", "III", "IV", "V", "VI"}
+local Pool = {}
+
+local function GetDrawing(i)
+    if Pool[i] then return Pool[i] end
+    local d = {
+        Box = Drawing.new("Square"),
+        Out = Drawing.new("Square"),
+        Txt = Drawing.new("Text"),
+        Dst = Drawing.new("Text"),
+        Vis = false
+    }
+    
+    d.Box.Thickness, d.Out.Thickness = 2, 4
+    d.Out.Color, d.Box.ZIndex, d.Out.ZIndex = Color3.new(0,0,0), 15, 14
+    
+    for _, t in pairs({d.Txt, d.Dst}) do 
+        t.Center, t.Outline, t.Font, t.Size, t.ZIndex = true, true, 2, 12, 16 
+    end
+    
+    Pool[i] = d
+    return d
+end
+
+local function Toggle(d, bool)
+    if d.Vis ~= bool then
+        d.Vis = bool
+        d.Box.Visible, d.Out.Visible, d.Txt.Visible, d.Dst.Visible = bool, bool, bool, bool
+    end
+end
+
+task.spawn(function()
+    while true do
+        local root = lp.Character and lp.Character:FindFirstChild("HumanoidRootPart")
+        local count = 0
+
+        if root then
+            for _, obj in pairs(Workspace:GetChildren()) do
+                local color = POINT_COLORS[obj.Name] or (obj.Name:find("random_potion_egg") and POTION_COLOR)
+                local target = obj:FindFirstChild("Egg") or (obj:IsA("BasePart") and obj)
+
+                if color and target then
+                    local screenPos, onScreen = WorldToScreen(target.Position)
+                    if onScreen then
+                        count = count + 1
+                        local d = GetDrawing(count)
+                        local dist = (root.Position - target.Position).Magnitude
+                        local sz = math.clamp(1200 / dist, 10, 50)
+                        local h = sz * 1.2
+                        local pos = Vector2.new(screenPos.X - sz/2, screenPos.Y - h/2)
+                        local tier = obj.Name:match("%d+")
+
+                        d.Box.Position, d.Box.Size, d.Box.Color = pos, Vector2.new(sz, h), color
+                        d.Out.Position, d.Out.Size = pos, d.Box.Size
+                        d.Txt.Position, d.Txt.Color = Vector2.new(screenPos.X, pos.Y - 15), color
+                        d.Txt.Text = (POINT_COLORS[obj.Name] and "Point Egg " or "Potion Egg ") .. (ROMAN[tonumber(tier)] or "I")
+                        d.Dst.Position, d.Dst.Text = Vector2.new(screenPos.X, pos.Y + h + 2), math.floor(dist) .. "m"
+                        
+                        Toggle(d, true)
+                    end
+                end
+            end
+        end
+
+        for i = count + 1, #Pool do 
+            Toggle(Pool[i], false) 
+        end
+        
+        task.wait()
+    end
+end)
